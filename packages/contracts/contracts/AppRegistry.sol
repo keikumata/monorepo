@@ -47,27 +47,30 @@ contract AppRegistry {
     address sender
   );
 
-  enum Status {
+  enum AppStatus {
     ON,
     DISPUTE,
     OFF
   }
 
-  struct Auth {
-    address owner;
-    address[] signingKeys;
-  }
-
-  struct App {
+  struct AppInterface {
     address addr;
     bytes4 applyAction;
-    bytes4 resolve;
     bytes4 getTurnTaker;
     bytes4 isStateTerminal;
+    bytes4 resolve;
   }
 
-  struct State {
-    Status status;
+  struct AppInstance {
+    address owner;
+    address[] signingKeys;
+    bytes32 appHash;
+    bytes32 termsHash;
+    uint256 defaultTimeout;
+  }
+
+  struct AppState {
+    AppStatus status;
     bytes32 appStateHash;
     address latestSubmitter;
     uint256 nonce;
@@ -76,101 +79,68 @@ contract AppRegistry {
     uint256 disputeCounter;
   }
 
-  struct AppInstance {
-    Auth auth;
-    State state;
-    Transfer.Transaction resolution;
-    bytes32 appHash;
-    bytes32 termsHash;
-    uint256 defaultTimeout;
-  }
+  mapping (bytes32 => AppState) appStates;
+  mapping (bytes32 => Transfer.Transaction) appResolutions;
 
-  mapping (bytes32 => AppInstance) appInstances;
-
-  modifier onlyWhenChannelOpen(bytes32 _id) {
-    require(
-      !isStateTerminal(appInstances[_id].state),
-      "State has already been settled"
-    );
-    _;
-  }
-
-  modifier onlyWhenChannelDispute(bytes32 _id) {
-    require(
-      appInstances[_id].state.status == Status.DISPUTE,
-      "State is not being disputed"
-    );
-    _;
-  }
-
-  modifier onlyWhenChannelClosed(bytes32 _id) {
-    require(isStateTerminal(appInstances[_id].state), "State is still unsettled");
-    _;
-  }
-
-  function getAppInstance(bytes32 _id) external view returns (AppInstance) {
-    return appInstances[_id];
-  }
-
-  /// @notice Contract constructor
-  /// @param owner An address which is allowed to set state. Typically an address off a multisig wallet.
-  /// @param signingKeys An array of addresses which can set state with unanimous consent
-  /// @param app Hash of the application's interface
-  /// @param terms Hash of a `Transfer.Terms` object commiting to the terms of the app
-  /// @param timeout The default timeout (in blocks) in case of dispute
-  function registerAppInstance(
-    address owner,
-    address[] signingKeys,
-    bytes32 app,
-    bytes32 terms,
-    uint256 timeout
-  )
-    external
-  {
-    bytes32 _id = keccak256(
-      abi.encodePacked(
-        owner, signingKeys, app, terms, timeout
-      )
-    );
-
-    AppInstance storage appInstance = appInstances[_id];
-
-    appInstance.auth.owner = owner;
-    appInstance.auth.signingKeys = signingKeys;
-    appInstance.termsHash = terms;
-    appInstance.appHash = app;
-    appInstance.defaultTimeout = timeout;
-  }
-
-  /// @notice A getter function for the owner of the state channel
-  /// @return The address of the `owner`
-  function getOwner(bytes32 _id) external view returns (address) {
-    return appInstances[_id].auth.owner;
-  }
-
-  /// @notice A getter function for the signing keys of the state channel
-  /// @return The addresses of the `signingKeys`
-  function getSigningKeys(bytes32 _id) external view returns (address[]) {
-    return appInstances[_id].auth.signingKeys;
-  }
-
-  /// @notice A getter function for the latest agreed nonce of the state channel
-  /// @return The uint value of the latest agreed nonce
-  function latestNonce(bytes32 _id) external view returns (uint256) {
-    return appInstances[_id].state.nonce;
-  }
-
-  /// @notice A helper method to determine whether or not the channel is closed
-  /// @return A boolean representing whether or not the state channel is closed
-  function isClosed(bytes32 _id) external view returns (bool) {
-    return isStateTerminal(appInstances[_id].state);
+  function getAppState(bytes32 _id) external view returns (AppState) {
+    return appStates[_id];
   }
 
   /// @notice A getter function for the resolution if one is set
   /// @return A `Transfer.Transaction` object representing the resolution of the channel
+  // FIXME:
   function getResolution(bytes32 _id) public view returns (Transfer.Transaction) {
-    return appInstances[_id].resolution;
+    return appResolutions[_id];
   }
+
+  struct TinyAppStateUpdate {
+    bytes32 appStateHash;
+    uint256 nonce;
+    uint256 timeout;
+  }
+
+  struct FullAppStateUpdate {
+    bytes appState;
+    uint256 nonce;
+    uint256 timeout;
+  }
+
+  struct TinyAppAction {
+    bytes32 prevAppStateHash;
+    bytes32 actionHash;
+  }
+
+  struct FullAppAction {
+    bytes32 prevAppStateHash;
+    bytes action;
+  }
+
+  // FIXME: Clean
+  // function newComputeStateHash(bytes32 _id, StateUpdate
+  //   internal
+  //   pure
+  //   returns (bytes32)
+  // {
+  //   return keccak256(
+  //     abi.encodePacked(
+  //       byte(0x19),
+  //       _id,
+  //       appStateHash,
+  //       nonce,
+  //       timeout
+  //     )
+  //   );
+  // }
+
+  // FIXME: Clean
+  // struct TinyAppPointer {
+  //   address owner;
+  //   address[] signingKeys;
+  //   bytes32 appInterfaceHash;
+  //   bytes32 termsHash;
+  //   uint256 defaultTimeout;
+  // }
+
 
   /// @notice Set the application state to a given value.
   /// This value must have been signed off by all parties to the channel, that is,
@@ -181,50 +151,72 @@ contract AppRegistry {
   /// @param signatures A sorted bytes string of concatenated signatures of each signingKey
   /// @dev This function is only callable when the state channel is in an ON state.
   function setState(
-    bytes32 _id,
+    address owner,
+    address[] signingKeys,
+    bytes32 appInterfaceHash,
+    bytes32 termsHash,
+    uint256 defaultTimeout,
     bytes32 appStateHash,
     uint256 nonce,
     uint256 timeout,
     bytes signatures
   )
     public
-    onlyWhenChannelOpen(_id)
   {
-    AppInstance storage appInstance = appInstances[_id];
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        byte(0x19),
+        owner,
+        signingKeys,
+        appInterfaceHash,
+        termsHash,
+        defaultTimeout
+      )
+    );
 
-    if (msg.sender != appInstance.auth.owner) {
-      bytes32 h = computeStateHash(_id, appStateHash, nonce, timeout);
+    AppState storage appState = appStates[_id];
+
+    require(
+      appState.status != AppStatus.OFF &&
+      (appState.status != AppStatus.DISPUTE || appState.finalizesAt >= block.number),
+      "setState was called on an app that is already considered OFF"
+    );
+
+    if (msg.sender != owner) {
       require(
-        signatures.verifySignatures(h, appInstance.auth.signingKeys),
-        "Invalid signatures"
+        signatures.verifySignatures(
+          keccak256(
+            abi.encodePacked(
+              byte(0x19),
+              _id,
+              appStateHash,
+              nonce,
+              timeout
+            )
+          ),
+          signingKeys
+        ),
+        "Invalid signatures were submitted to setState and msg.sender was not owner"
       );
     }
 
-    if (timeout > 0) {
-      require(
-        nonce > appInstance.state.nonce,
-        "Tried to set state with non-new state"
-      );
-      appInstance.state.status = Status.DISPUTE;
-    } else {
-      require(
-        nonce >= appInstance.state.nonce,
-        "Tried to finalize state with stale state"
-      );
-      appInstance.state.status = Status.OFF;
-    }
+    require(
+      nonce > appState.nonce,
+      "Tried to call setState with an outdated nonce version"
+    );
 
-    appInstance.state.appStateHash = appStateHash;
-    appInstance.state.nonce = nonce;
-    appInstance.state.disputeNonce = 0;
-    appInstance.state.finalizesAt = block.number + timeout;
-    appInstance.state.disputeCounter += 1;
-    appInstance.state.latestSubmitter = msg.sender;
+    appState.status = timeout > 0 ? AppStatus.DISPUTE : AppStatus.OFF;
+    appState.appStateHash = appStateHash;
+    appState.nonce = nonce;
+    appState.finalizesAt = block.number + timeout;
+    appState.disputeNonce = 0;
+    appState.disputeCounter += 1;
+    appState.latestSubmitter = msg.sender;
   }
 
   /// @notice Create a dispute regarding the latest signed state and immediately after,
   /// performs a unilateral action to update it.
-  /// @param app An `App` struct specifying the application logic
+  // @param app An `App` struct specifying the application logic
   /// @param appState The ABI encoded application state
   /// @param nonce The nonce of the agreed upon state
   /// @param action The ABI encoded action the submitter wishes to take
@@ -235,9 +227,12 @@ contract AppRegistry {
   /// @param claimFinal A boolean representing a claim by the caller that the action
   /// progresses the state of the application to a terminal / finalized state
   /// @dev Note this function is only callable when the state channel is in an ON state
-  function createDispute(
-    bytes32 _id,
-    App app,
+  function setStateWithAction(
+    address owner,
+    address[] signingKeys,
+    AppInterface appInterface,
+    bytes32 termsHash,
+    uint256 defaultTimeout,
     bytes appState,
     uint256 nonce,
     bytes action,
@@ -246,28 +241,40 @@ contract AppRegistry {
     bool claimFinal
   )
     public
-    onlyWhenChannelOpen(_id)
   {
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        byte(0x19),
+        owner,
+        signingKeys,
+        keccak256(abi.encode(appInterface)),
+        termsHash,
+        defaultTimeout
+      )
+    );
 
-    // FIXME: Before merging, the timeout variable has been removed to get
-    // a stack too deep error to go away ... need to refactor function.
-
-    AppInstance storage appInstance = appInstances[_id];
+    AppState storage app = appStates[_id];
 
     require(
-      nonce > appInstance.state.nonce,
+      app.status != AppStatus.OFF &&
+      (app.status != AppStatus.DISPUTE || app.finalizesAt >= block.number),
+      "setStateWithAction was called on an app that is already considered OFF"
+    );
+
+    require(
+      nonce > app.nonce,
       "Tried to create dispute with outdated state"
     );
 
     require(
       appStateSignatures.verifySignatures(
         computeStateHash(_id, keccak256(appState), nonce, 1337),
-        appInstance.auth.signingKeys
+        signingKeys
       ),
       "Invalid signatures"
     );
 
-    address turnTaker = getAppTurnTaker(_id, app, appState);
+    address turnTaker = getAppTurnTaker(signingKeys, appInterface, appState);
 
     require(
       turnTaker == actionSignature.recoverKey(
@@ -276,54 +283,33 @@ contract AppRegistry {
           keccak256(appState),
           action,
           nonce,
-          appInstance.state.disputeNonce
+          app.disputeNonce
         ),
         0
       ),
-      "Action must have been signed by correct turn taker"
+      "setStateWithAction called with action signed by incorrect turn taker"
     );
 
-    emit DisputeStarted(
-      _id,
-      msg.sender,
-      appInstance.state.disputeCounter + 1,
-      keccak256(appState),
-      nonce,
-      block.number + 1337
-    );
+    bytes memory newAppState = executeAppApplyAction(appInterface, appState, action);
 
-    bytes memory newAppState = executeAppApplyAction(app, appState, action);
-
-    appInstance.state.appStateHash = keccak256(newAppState);
-    appInstance.state.nonce = nonce;
-    appInstance.state.disputeNonce = 0;
-    appInstance.state.disputeCounter += 1;
-    appInstance.state.latestSubmitter = msg.sender;
+    app.appStateHash = keccak256(newAppState);
+    app.nonce = nonce;
+    app.disputeNonce = 0;
+    app.disputeCounter += 1;
+    app.latestSubmitter = msg.sender;
 
     if (claimFinal) {
-      require(isAppStateTerminal(app, newAppState));
-      appInstance.state.finalizesAt = block.number;
-      appInstance.state.status = Status.OFF;
-
-      emit DisputeFinalized(_id, msg.sender, newAppState);
+      require(isAppStateTerminal(appInterface, newAppState));
+      app.finalizesAt = block.number;
+      app.status = AppStatus.OFF;
     } else {
-      appInstance.state.finalizesAt = block.number + 1337;
-      appInstance.state.status = Status.DISPUTE;
-
-      emit DisputeProgressed(
-        _id,
-        msg.sender,
-        appState,
-        action,
-        newAppState,
-        appInstance.state.disputeNonce,
-        block.number + 1337
-      );
+      app.finalizesAt = block.number + 1337;
+      app.status = AppStatus.DISPUTE;
     }
   }
 
   /// @notice Respond to a dispute with a valid action
-  /// @param app An `App` struct specifying the application logic
+  // @param app An `App` struct specifying the application logic
   /// @param appState The ABI encoded latest signed application state
   /// @param action The ABI encoded action the submitter wishes to take
   /// @param actionSignature A bytes string of a single signature by the address of the
@@ -332,60 +318,60 @@ contract AppRegistry {
   /// to a terminal / finalized state
   /// @dev This function is only callable when the state channel is in a DISPUTE state
   function progressDispute(
-    bytes32 _id,
-    App app,
+    address owner,
+    address[] signingKeys,
+    AppInterface appInterface,
+    bytes32 termsHash,
+    uint256 defaultTimeout,
     bytes appState,
     bytes action,
     bytes actionSignature,
     bool claimFinal
   )
     public
-    onlyWhenChannelDispute(_id)
   {
-    AppInstance storage appInstance = appInstances[_id];
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        byte(0x19),
+        owner,
+        signingKeys,
+        keccak256(abi.encode(appInterface)),
+        termsHash,
+        defaultTimeout
+      )
+    );
+
+    AppState storage app = appStates[_id];
 
     require(
-      keccak256(appState) == appInstance.state.appStateHash,
+      app.status == AppStatus.DISPUTE && block.number >= app.finalizesAt,
+      "App must be in a disputed state to call progressDispute"
+    );
+
+    require(
+      keccak256(appState) == app.appStateHash,
       "Invalid state submitted"
     );
 
+    address turnTaker = getAppTurnTaker(signingKeys, appInterface, appState);
     require(
-      keccak256(abi.encode(app)) == appInstance.appHash,
-      "Tried to resolve dispute with non-agreed upon app"
-    );
-
-    address turnTaker = getAppTurnTaker(_id, app, appState);
-
-    require(
-      turnTaker == actionSignature.recoverKey(keccak256(action), 0),
+       turnTaker == actionSignature.recoverKey(keccak256(action), 0),
       "Action must have been signed by correct turn taker"
     );
 
-    bytes memory newAppState = executeAppApplyAction(app, appState, action);
+    bytes memory newAppState = executeAppApplyAction(appInterface, appState, action);
 
-    appInstance.state.appStateHash = keccak256(newAppState);
-    appInstance.state.disputeNonce += 1;
-    appInstance.state.latestSubmitter = msg.sender;
+    app.appStateHash = keccak256(newAppState);
+    app.disputeNonce += 1;
+    app.latestSubmitter = msg.sender;
 
     if (claimFinal) {
-      require(isAppStateTerminal(app, newAppState));
-      appInstance.state.finalizesAt = block.number;
-      appInstance.state.status = Status.OFF;
-
-      emit DisputeFinalized(_id, msg.sender, newAppState);
+      require(isAppStateTerminal(appInterface, newAppState));
+      app.finalizesAt = block.number;
+      app.status = AppStatus.OFF;
     } else {
-      appInstance.state.status = Status.DISPUTE;
-      appInstance.state.finalizesAt = block.number + appInstance.defaultTimeout;
-
-      emit DisputeProgressed(
-        _id,
-        msg.sender,
-        appState,
-        action,
-        newAppState,
-        appInstance.state.disputeNonce,
-        block.number + appInstance.defaultTimeout
-      );
+      app.status = AppStatus.DISPUTE;
+      app.finalizesAt = block.number + defaultTimeout;
     }
   }
 
@@ -393,73 +379,92 @@ contract AppRegistry {
   /// @param signatures Signatures by all signing keys of the currently latest disputed
   /// state; an indication of agreement of this state and valid to cancel a dispute
   /// @dev Note this function is only callable when the state channel is in a DISPUTE state
-  function cancelDispute(bytes32 _id, bytes signatures)
+  function cancelDispute(
+    address owner,
+    address[] signingKeys,
+    AppInterface appInterface,
+    bytes32 termsHash,
+    uint256 defaultTimeout,
+    bytes signatures
+  )
     public
-    onlyWhenChannelDispute(_id)
   {
-    AppInstance storage appInstance = appInstances[_id];
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        byte(0x19),
+        owner,
+        signingKeys,
+        keccak256(abi.encode(appInterface)),
+        termsHash,
+        defaultTimeout
+      )
+    );
+
+    AppState storage app = appStates[_id];
+
+    require(
+      app.status == AppStatus.DISPUTE && block.number >= app.finalizesAt,
+      "App must be in a disputed state to call progressDispute"
+    );
 
     bytes32 stateHash = computeStateHash(
       _id,
-      appInstance.state.appStateHash,
-      appInstance.state.nonce,
-      appInstance.defaultTimeout
+      app.appStateHash,
+      app.nonce,
+      defaultTimeout
     );
 
     require(
-      signatures.verifySignatures(stateHash, appInstance.auth.signingKeys),
+      signatures.verifySignatures(stateHash, signingKeys),
       "Invalid signatures"
     );
 
-    appInstance.state.disputeNonce = 0;
-    appInstance.state.finalizesAt = 0;
-    appInstance.state.status = Status.ON;
-    appInstance.state.latestSubmitter = msg.sender;
-
-    emit DisputeCancelled(_id, msg.sender);
+    app.disputeNonce = 0;
+    app.finalizesAt = 0;
+    app.status = AppStatus.ON;
+    app.latestSubmitter = msg.sender;
   }
 
   /// @notice Fetch and store the resolution of a state channel application
-  /// @param app An `App` struct including all information relevant to interface with an app
+  // @param app An `App` struct including all information relevant to interface with an app
   /// @param finalState The ABI encoded version of the finalized application state
   /// @param terms The ABI encoded version of the already agreed upon terms
   /// @dev Note this function is only callable when the state channel is in an OFF state
-  function setResolution(bytes32 _id, App app, bytes finalState, bytes terms)
+  function setResolution(
+    address owner,
+    address[] signingKeys,
+    AppInterface appInterface,
+    uint256 defaultTimeout,
+    bytes finalState,
+    bytes terms
+  )
     public
-    onlyWhenChannelClosed(_id)
   {
-    AppInstance storage appInstance = appInstances[_id];
+    bytes32 _id = keccak256(
+      abi.encodePacked(
+        byte(0x19),
+        owner,
+        signingKeys,
+        keccak256(abi.encode(appInterface)),
+        keccak256(terms),
+        defaultTimeout
+      )
+    );
+
+    AppState storage app = appStates[_id];
 
     require(
-      keccak256(finalState) == appInstance.state.appStateHash,
+      app.status == AppStatus.OFF ||
+      (app.status == AppStatus.DISPUTE && block.number < app.finalizesAt),
+      "App must be in a disputed state to call progressDispute"
+    );
+
+    require(
+      keccak256(finalState) == app.appStateHash,
       "Tried to set resolution with incorrect final state"
     );
 
-    require(
-      keccak256(terms) == appInstance.termsHash,
-      "Tried to set resolution with non-agreed upon terms"
-    );
-
-    require(
-      keccak256(abi.encode(app)) == appInstance.appHash,
-      "Tried to set resolution with non-agreed upon app"
-    );
-
-    appInstance.resolution = getAppResolution(app, finalState, terms);
-  }
-
-  /// @notice A helper method to check if the state of the channel is final by
-  /// doing a check on the submitted state and comparing to the current block number
-  /// @param s A state wrapper struct including the status and finalization time
-  /// @return A boolean indicating if the state is final or not
-  function isStateTerminal(State s) public view returns (bool) {
-    if (s.status == Status.ON) {
-      return false;
-    } else if (s.status == Status.DISPUTE) {
-      return block.number >= s.finalizesAt;
-    } else if (s.status == Status.OFF) {
-      return true;
-    }
+    appResolutions[_id] = getAppResolution(appInterface, finalState, terms);
   }
 
   /// @notice Compute a unique hash for a state of this state channel and application
@@ -475,7 +480,7 @@ contract AppRegistry {
     return keccak256(
       abi.encodePacked(
         byte(0x19),
-        appInstances[_id].auth.signingKeys,
+        _id,
         nonce,
         timeout,
         stateHash
@@ -518,7 +523,7 @@ contract AppRegistry {
   /// @param app An `App` struct including all information relevant to interface with an app
   /// @param appState The ABI encoded version of some application state
   /// @return A boolean indicating if the application state is terminal or not
-  function isAppStateTerminal(App app, bytes appState)
+  function isAppStateTerminal(AppInterface app, bytes appState)
     private
     view
     returns (bool)
@@ -532,7 +537,7 @@ contract AppRegistry {
   /// @param app An `App` struct including all information relevant to interface with an app
   /// @param appState The ABI encoded version of some application state
   /// @return An address representing the turn taker in the `signingKeys`
-  function getAppTurnTaker(bytes32 _id, App app, bytes appState)
+  function getAppTurnTaker(address[] signingKeys, AppInterface app, bytes appState)
     private
     view
     returns (address)
@@ -542,11 +547,11 @@ contract AppRegistry {
     );
 
     require(
-      appInstances[_id].auth.signingKeys[idx] != address(0),
+      signingKeys[idx] != address(0),
       "Application returned invalid turn taker index"
     );
 
-    return appInstances[_id].auth.signingKeys[idx];
+    return signingKeys[idx];
   }
 
   /// @notice Execute the application's applyAction function to compute new state
@@ -554,7 +559,7 @@ contract AppRegistry {
   /// @param appState The ABI encoded version of some application state
   /// @param action The ABI encoded version of some application action
   /// @return A bytes array of the ABI encoded newly computed application state
-  function executeAppApplyAction(App app, bytes appState, bytes action)
+  function executeAppApplyAction(AppInterface app, bytes appState, bytes action)
     private
     view
     returns (bytes)
@@ -569,7 +574,7 @@ contract AppRegistry {
   /// @param appState The ABI encoded version of some application state
   /// @param terms The ABI encoded version of the transfer terms
   /// @return A `Transfer.Transaction` struct with all encoded information of the resolution
-  function getAppResolution(App app, bytes appState, bytes terms)
+  function getAppResolution(AppInterface app, bytes appState, bytes terms)
     private
     view
     returns (Transfer.Transaction)
