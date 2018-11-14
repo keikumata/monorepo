@@ -1,21 +1,21 @@
 pragma solidity 0.4.25;
 
 
-/// @title Signatures - A library wrapper around signature verification
+/// @title LibSignature - A library wrapper around signature verification
 /// @author Liam Horne - <liam@l4v.io>
 /// @author Ricardo Guilherme Schmidt (Status Research & Development GmbH)
 /// @author Richard Meissner - <richard@gnosis.pm>
 /// @notice This contracts purpose is to make it easy to do signature verification of
 /// string concatenated signatures in a bytes array. It is heavily based off the
 /// SignatureValidator contract from Gnosis: https://git.io/fNzRJ
-library Signatures {
+contract LibSignature {
 
   /// @dev Recovers address who signed the message
   /// @param messageSignature message `txHash` signature
   /// @param txHash operation ethereum signed message hash
   /// @param pos which signature to read
   function recoverKey(
-    bytes memory messageSignature,
+    bytes messageSignature,
     bytes32 txHash,
     uint256 pos
   )
@@ -35,7 +35,7 @@ library Signatures {
   /// @param txHash operation ethereum signed message hash
   /// @param signers addresses of all signers in order
   function verifySignatures(
-    bytes memory signatures,
+    bytes signatures,
     bytes32 txHash,
     address[] signers
   )
@@ -55,7 +55,7 @@ library Signatures {
   /// @dev divides bytes signature into `uint8 v, bytes32 r, bytes32 s`
   /// @param pos which signature to read
   /// @param signatures concatenated rsv signatures
-  function signatureSplit(bytes memory signatures, uint256 pos)
+  function signatureSplit(bytes signatures, uint256 pos)
     public
     pure
     returns (uint8 v, bytes32 r, bytes32 s)

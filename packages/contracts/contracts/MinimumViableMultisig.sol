@@ -1,6 +1,6 @@
 pragma solidity 0.4.25;
 
-import "./lib/Signatures.sol";
+import "./lib/LibSignature.sol";
 
 
 /// @title MinimumViableMultisig - An example multisig exemplifying the minimal
@@ -11,9 +11,7 @@ import "./lib/Signatures.sol";
 /// (b) Requiring n-of-n unanimous consent
 /// (c) Deterministic signature verification without an on-chain address
 /// (d) Non-nonce based replay protection
-contract MinimumViableMultisig {
-
-  using Signatures for bytes;
+contract MinimumViableMultisig is LibSignature {
 
   mapping(bytes32 => bool) isExecuted;
 
@@ -57,7 +55,7 @@ contract MinimumViableMultisig {
     bytes32 transactionHash = getTransactionHash(to, value, data, operation);
 
     require(
-      signatures.verifySignatures(transactionHash, _owners),
+      verifySignatures(signatures, transactionHash, _owners),
       "Invalid signatures submitted to execTransaction"
     );
 

@@ -1,10 +1,9 @@
 pragma solidity 0.4.25;
 
-import "../lib/StaticCall.sol";
+import "../lib/LibStaticCall.sol";
 
 
-contract TestCaller {
-  using StaticCall for address;
+contract TestCaller is LibStaticCall {
 
   function execStaticCall(
     address to,
@@ -16,7 +15,7 @@ contract TestCaller {
     returns (bytes)
   {
     bytes memory data = abi.encodePacked(selector, calldata);
-    return to.staticcall_as_bytes(data);
+    return staticcall_as_bytes(to, data);
   }
 
   function execStaticCallBool(
@@ -29,7 +28,7 @@ contract TestCaller {
     returns (bool)
   {
     bytes memory data = abi.encodePacked(selector, calldata);
-    return to.staticcall_as_bool(data);
+    return staticcall_as_bool(to, data);
   }
 
 }

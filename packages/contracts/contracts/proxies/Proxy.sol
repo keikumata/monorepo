@@ -1,8 +1,7 @@
 pragma solidity 0.4.25;
 
 
-/// @title Proxy - Generic proxy contract allows to execute all transactions applying
-/// the code of a master contract.
+/// @title Proxy - Generic proxy contract allows to execute all transactions applying the code of a master contract.
 /// @author Stefan George - <stefan@gnosis.pm>
 contract Proxy {
 
@@ -14,7 +13,7 @@ contract Proxy {
   constructor(address _masterCopy)
     public
   {
-    require(_masterCopy != 0, "Proxy masterCopy address was 0x0");
+    require(_masterCopy != 0, "Invalid master copy address provided");
     masterCopy = _masterCopy;
   }
 

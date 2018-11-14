@@ -5,11 +5,11 @@ import "openzeppelin-eth/contracts/utils/Address.sol";
 import "../lib/Transfer.sol";
 
 
-/// @title StaticCall - A library wrapper around the STATICALL opcode
+/// @title LibStaticCall - A library wrapper around the STATICALL opcode
 /// @author Liam Horne - <liam@l4v.io>
 /// @notice This contracts purpose is to make it easy for contracts to make static function
 /// calls to contracts with unknown ABIs without exposing assembly code in the contract.
-library StaticCall {
+contract LibStaticCall {
 
   using Address for address;
 

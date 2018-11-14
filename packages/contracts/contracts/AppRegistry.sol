@@ -1,7 +1,7 @@
 pragma solidity ^0.4.25;
 pragma experimental "ABIEncoderV2";
 
-import "./lib/Signatures.sol";
+import "./lib/LibSignature.sol";
 import "./lib/StaticCall.sol";
 import "./lib/Transfer.sol";
 
@@ -11,11 +11,9 @@ import "./lib/Transfer.sol";
 /// @notice Supports the adjudication and timeout guarantees required by state channel
 /// applications to be secure in a gas and storage-optimized manner. Resolves to a
 /// `Transfer.Transaction` when the channel is closed.
-contract AppRegistry {
+contract AppRegistry is LibSignature, LibStaticCall {
 
   using Transfer for Transfer.Transaction;
-  using StaticCall for address;
-  using Signatures for bytes;
 
   event DisputeStarted(
     bytes32 indexed _id,
@@ -184,7 +182,8 @@ contract AppRegistry {
 
     if (msg.sender != owner) {
       require(
-        signatures.verifySignatures(
+        verifySignatures(
+          signatures,
           keccak256(
             abi.encodePacked(
               byte(0x19),
@@ -267,7 +266,7 @@ contract AppRegistry {
     );
 
     require(
-      appStateSignatures.verifySignatures(
+      verifySignatures(appStateSignatures,
         computeStateHash(_id, keccak256(appState), nonce, 1337),
         signingKeys
       ),
@@ -277,7 +276,8 @@ contract AppRegistry {
     address turnTaker = getAppTurnTaker(signingKeys, appInterface, appState);
 
     require(
-      turnTaker == actionSignature.recoverKey(
+      turnTaker == recoverKey(
+        actionSignature,
         computeActionHash(
           turnTaker,
           keccak256(appState),
@@ -355,7 +355,7 @@ contract AppRegistry {
 
     address turnTaker = getAppTurnTaker(signingKeys, appInterface, appState);
     require(
-       turnTaker == actionSignature.recoverKey(keccak256(action), 0),
+       turnTaker == recoverKey(actionSignature, keccak256(action), 0),
       "Action must have been signed by correct turn taker"
     );
 
@@ -415,7 +415,7 @@ contract AppRegistry {
     );
 
     require(
-      signatures.verifySignatures(stateHash, signingKeys),
+      verifySignatures(signatures, stateHash, signingKeys),
       "Invalid signatures"
     );
 
@@ -528,7 +528,8 @@ contract AppRegistry {
     view
     returns (bool)
   {
-    return app.addr.staticcall_as_bool(
+    return staticcall_as_bool(
+      app.addr,
       abi.encodePacked(app.isStateTerminal, appState)
     );
   }
@@ -542,7 +543,8 @@ contract AppRegistry {
     view
     returns (address)
   {
-    uint256 idx = app.addr.staticcall_as_uint256(
+    uint256 idx = staticcall_as_uint256(
+      app.addr,
       abi.encodePacked(app.getTurnTaker, appState)
     );
 
@@ -564,7 +566,8 @@ contract AppRegistry {
     view
     returns (bytes)
   {
-    return app.addr.staticcall_as_bytes(
+    return staticcall_as_bytes(
+      app.addr,
       abi.encodePacked(app.applyAction, appState, action)
     );
   }
@@ -579,7 +582,8 @@ contract AppRegistry {
     view
     returns (Transfer.Transaction)
   {
-    return app.addr.staticcall_as_TransferDetails(
+    return staticcall_as_TransferDetails(
+      app.addr,
       abi.encodePacked(app.resolve, appState, terms)
     );
   }
