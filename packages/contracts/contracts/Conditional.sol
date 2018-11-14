@@ -1,7 +1,7 @@
 pragma solidity 0.4.25;
 pragma experimental "ABIEncoderV2";
 
-import "./lib/StaticCall.sol";
+import "./lib/LibStaticCall.sol";
 
 
 /// @title Conditional - A wrapper to verify if abstract conditions are true
@@ -10,8 +10,6 @@ import "./lib/StaticCall.sol";
 /// resolution of an abstract blockchain condition. A condition may be represented as
 /// a successful function call or as an equality check on a function calls return value.
 contract Conditional {
-
-  using StaticCall for address;
 
   struct Condition {
     address to;
@@ -44,7 +42,8 @@ contract Conditional {
     view
     returns (bool)
   {
-    condition.to.staticcall_as_bytes(
+    staticcall_as_bytes(
+      condition.to,
       abi.encodePacked(
         condition.selector,
         condition.parameters
@@ -61,7 +60,8 @@ contract Conditional {
     view
     returns (bool)
   {
-    bytes memory ret = condition.to.staticcall_as_bytes(
+    bytes memory ret = staticcall_as_bytes(
+      condition.to,
       abi.encodePacked(
         condition.selector,
         condition.parameters
