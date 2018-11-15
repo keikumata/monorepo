@@ -4,7 +4,7 @@ import * as solc from "solc";
 import { AbstractContract, expect } from "../../utils";
 import * as Utils from "../../utils/misc";
 
-contract("Registry", accounts => {
+contract("ContractRegistry", accounts => {
   const web3 = (global as any).web3;
   const { unlockedAccount } = Utils.setupTestEnv(web3);
 
@@ -28,7 +28,9 @@ contract("Registry", accounts => {
   // @ts-ignore
   beforeEach(async () => {
     proxyContract = await AbstractContract.fromArtifactName("Proxy");
-    const registry = await AbstractContract.fromArtifactName("Registry");
+    const registry = await AbstractContract.fromArtifactName(
+      "ContractRegistry"
+    );
 
     testRegistry = await registry.deploy(unlockedAccount);
   });

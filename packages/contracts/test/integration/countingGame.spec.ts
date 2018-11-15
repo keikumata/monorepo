@@ -6,22 +6,13 @@ import * as Utils from "../../utils/misc";
 const web3 = (global as any).web3;
 const { provider, unlockedAccount } = Utils.setupTestEnv(web3);
 
-const [A, B] = [
-  // 0xaeF082d339D227646DB914f0cA9fF02c8544F30b
-  new ethers.Wallet(
-    "0x3570f77380e22f8dc2274d8fd33e7830cc2d29cf76804e8c21f4f7a6cc571d27"
-  ),
-  // 0xb37e49bFC97A948617bF3B63BC6942BB15285715
-  new ethers.Wallet(
-    "0x4ccac8b1e81fb18a98bbaf29b9bfe307885561f71b76bd4680d7aec9d0ddfcfd"
-  )
-];
+import { ALICE, BOB } from "../test-constants";
 
 const computeStateHash = (stateHash: string, nonce: number, timeout: number) =>
   ethers.utils.keccak256(
     ethers.utils.solidityPack(
       ["bytes1", "address[]", "uint256", "uint256", "bytes32"],
-      ["0x19", [A.address, B.address], nonce, timeout, stateHash]
+      ["0x19", [ALICE.address, BOB.address], nonce, timeout, stateHash]
     )
   );
 
@@ -44,8 +35,8 @@ contract("CountingApp", (accounts: string[]) => {
   let stateChannel: ethers.Contract;
 
   const exampleState = {
-    player1: A.address,
-    player2: B.address,
+    player1: ALICE.address,
+    player2: BOB.address,
     count: 0,
     turnNum: 0
   };
@@ -93,17 +84,11 @@ contract("CountingApp", (accounts: string[]) => {
   let terms;
   beforeEach(async () => {
     const networkID = await AbstractContract.getNetworkID(unlockedAccount);
-    const staticCall = AbstractContract.fromArtifactName("StaticCall");
-    const signatures = AbstractContract.fromArtifactName("Signatures");
     const transfer = AbstractContract.fromArtifactName("Transfer");
     const appInstance = await AbstractContract.fromArtifactName("AppInstance", {
-      Signatures: signatures,
-      StaticCall: staticCall,
       Transfer: transfer
     });
-    const countingApp = await AbstractContract.fromArtifactName("CountingApp", {
-      StaticCall: staticCall
-    });
+    const countingApp = await AbstractContract.fromArtifactName("CountingApp");
 
     game = await countingApp.deploy(unlockedAccount);
 
@@ -129,7 +114,7 @@ contract("CountingApp", (accounts: string[]) => {
 
     stateChannel = await contractFactory.deploy(
       accounts[0],
-      [A.address, B.address],
+      [ALICE.address, BOB.address],
       keccak256(encode(appEncoding, app)),
       keccak256(encode(termsEncoding, terms)),
       10
@@ -140,8 +125,8 @@ contract("CountingApp", (accounts: string[]) => {
     const ret = await game.functions.resolve(exampleState, terms);
     expect(ret.assetType).to.eql(AssetType.ETH);
     expect(ret.token).to.be.equalIgnoreCase(ethers.constants.AddressZero);
-    expect(ret.to[0]).to.be.equalIgnoreCase(A.address);
-    expect(ret.to[1]).to.be.equalIgnoreCase(B.address);
+    expect(ret.to[0]).to.be.equalIgnoreCase(ALICE.address);
+    expect(ret.to[1]).to.be.equalIgnoreCase(BOB.address);
     expect(ret.value[0].toString()).to.be.eql(Utils.UNIT_ETH.mul(2).toString());
     expect(ret.value[1]).to.be.eql(new ethers.utils.BigNumber(0));
   });
@@ -168,8 +153,8 @@ contract("CountingApp", (accounts: string[]) => {
       const ret = await stateChannel.functions.getResolution();
       expect(ret.assetType).to.be.eql(AssetType.ETH);
       expect(ret.token).to.be.equalIgnoreCase(ethers.constants.AddressZero);
-      expect(ret.to[0]).to.be.equalIgnoreCase(A.address);
-      expect(ret.to[1]).to.be.equalIgnoreCase(B.address);
+      expect(ret.to[0]).to.be.equalIgnoreCase(ALICE.address);
+      expect(ret.to[1]).to.be.equalIgnoreCase(BOB.address);
       expect(ret.value[0].toString()).to.be.eql(
         Utils.UNIT_ETH.mul(2).toString()
       );
@@ -201,7 +186,7 @@ contract("CountingApp", (accounts: string[]) => {
 
       const h1 = computeStateHash(keccak256(state), 1, 10);
       const h2 = computeActionHash(
-        A.address,
+        ALICE.address,
         keccak256(state),
         encode(actionEncoding, action),
         1,
@@ -244,7 +229,7 @@ contract("CountingApp", (accounts: string[]) => {
 
       const h1 = computeStateHash(keccak256(state), 1, 10);
       const h2 = computeActionHash(
-        A.address,
+        ALICE.address,
         keccak256(state),
         encode(actionEncoding, action),
         1,
@@ -293,7 +278,7 @@ contract("CountingApp", (accounts: string[]) => {
 
       const h1 = computeStateHash(keccak256(state), 1, 10);
       const h2 = computeActionHash(
-        A.address,
+        ALICE.address,
         keccak256(state),
         encode(actionEncoding, action),
         1,

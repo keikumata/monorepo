@@ -17,10 +17,9 @@ const web3 = (global as any).web3;
 const { provider, unlockedAccount } = Utils.setupTestEnv(web3);
 
 const {
-  Registry,
+  ContractRegistry,
   NonceRegistry,
-  ConditionalTransaction,
-  StaticCall
+  ConditionalTransaction
 } = buildArtifacts;
 
 /// Returns the commit hash that can be used to commit to chosenNumber
@@ -47,10 +46,7 @@ enum Player {
 
 const { parseEther } = ethers.utils;
 const commitRevealAppDefinition = AbstractContract.fromArtifactName(
-  "CommitRevealApp",
-  {
-    StaticCall
-  }
+  "CommitRevealApp"
 );
 
 const appStateEncoding = abiEncodingForStruct(`
@@ -85,7 +81,7 @@ async function deployAppInstance(
   appContract: ethers.Contract,
   terms: TransferTerms
 ) {
-  const registry = await (await Registry).getDeployed(unlockedAccount);
+  const registry = await (await ContractRegistry).getDeployed(unlockedAccount);
   const signers = multisig.owners; // TODO: generate new signing keys for each state channel
   const appInstance = new AppInstance(
     signers,
@@ -113,7 +109,7 @@ async function executeStateChannelTransaction(
   const conditionalTransaction = await (await ConditionalTransaction).getDeployed(
     unlockedAccount
   );
-  const registry = await (await Registry).getDeployed(unlockedAccount);
+  const registry = await (await ContractRegistry).getDeployed(unlockedAccount);
   const nonceRegistry = await (await NonceRegistry).getDeployed(
     unlockedAccount
   );

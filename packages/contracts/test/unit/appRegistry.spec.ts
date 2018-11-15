@@ -65,14 +65,9 @@ contract("AppRegistry", (accounts: string[]) => {
 
   // @ts-ignore
   beforeEach(async () => {
-    const appRegistry = await AbstractContract.loadBuildArtifact(
-      "AppRegistry",
-      {
-        StaticCall: AbstractContract.loadBuildArtifact("StaticCall"),
-        Signatures: AbstractContract.loadBuildArtifact("Signatures"),
-        Transfer: AbstractContract.loadBuildArtifact("Transfer")
-      }
-    );
+    const appRegistry = await AbstractContract.fromArtifactName("AppRegistry", {
+      Transfer: AbstractContract.fromArtifactName("Transfer")
+    });
 
     judge = await appRegistry.deploy(unlockedAccount);
 

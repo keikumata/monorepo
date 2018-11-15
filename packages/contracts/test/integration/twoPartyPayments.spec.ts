@@ -82,11 +82,7 @@ contract("PaymentApp", (accounts: string[]) => {
 
     // Specifically for the AppInstance
     const appInstance = artifacts.require("AppInstance");
-    const staticCall = artifacts.require("StaticCall");
-    const signatures = artifacts.require("Signatures");
     const transfer = artifacts.require("Transfer");
-    appInstance.link("Signatures", signatures.address);
-    appInstance.link("StaticCall", staticCall.address);
     appInstance.link("Transfer", transfer.address);
 
     app = {

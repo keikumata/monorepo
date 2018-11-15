@@ -14,10 +14,7 @@ contract("TicTacToe", (accounts: string[]) => {
 
   // @ts-ignore
   before(async () => {
-    const staticCall = AbstractContract.fromArtifactName("StaticCall");
-    const ticTacToe = await AbstractContract.fromArtifactName("TicTacToe", {
-      StaticCall: staticCall
-    });
+    const ticTacToe = await AbstractContract.fromArtifactName("TicTacToeApp");
     game = await ticTacToe.deploy(unlockedAccount);
   });
 

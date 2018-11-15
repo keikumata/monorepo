@@ -13,10 +13,7 @@ contract("Nim", (accounts: string[]) => {
     "tuple(address[2] players, uint256 turnNum, uint256[3] pileHeights)";
 
   beforeEach(async () => {
-    const staticCall = AbstractContract.fromArtifactName("StaticCall");
-    const nim = await AbstractContract.fromArtifactName("Nim", {
-      StaticCall: staticCall
-    });
+    const nim = await AbstractContract.fromArtifactName("NimApp");
     game = await nim.deploy(unlockedAccount);
   });
 
