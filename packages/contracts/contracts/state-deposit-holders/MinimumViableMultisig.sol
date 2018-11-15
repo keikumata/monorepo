@@ -13,6 +13,8 @@ import "./lib/LibSignature.sol";
 /// (d) Non-nonce based replay protection
 contract MinimumViableMultisig is LibSignature {
 
+  address masterCopy;
+
   mapping(bytes32 => bool) isExecuted;
 
   address[] private _owners;

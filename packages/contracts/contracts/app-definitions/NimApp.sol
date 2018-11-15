@@ -8,7 +8,7 @@ import "../lib/Transfer.sol";
 Normal-form Nim
 https://en.wikipedia.org/wiki/Nim
 */
-contract Nim {
+contract NimApp {
 
   struct Action {
     uint256 pileIdx;

@@ -4,7 +4,7 @@ pragma experimental "ABIEncoderV2";
 import "../lib/Transfer.sol";
 
 
-contract TicTacToe {
+contract TicTacToeApp {
 
   enum ActionType {
     PLAY,
