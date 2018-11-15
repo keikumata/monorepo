@@ -1,18 +1,18 @@
 pragma solidity 0.4.25;
 pragma experimental "ABIEncoderV2";
 
-import "../lib/Transfer.sol";
-import "../lib/Conditional.sol";
-import "../Registry.sol";
-import "../NonceRegistry.sol";
-import "../AppInstance.sol";
+import "./libs/Transfer.sol";
+import "./libs/LibCondition.sol";
+
+import "./ContractRegistry.sol";
+import "./NonceRegistry.sol";
 
 
 /// @title ConditionalTransaction - A conditional transfer contract
 /// @author Liam Horne - <liam@l4v.io>
 /// @author Mitchell Van Der Hoeff - <mitchell@l4v.io>
 /// @notice Supports a complex transfer of funds contingent on some condition.
-contract ConditionalTransaction is Conditional {
+contract ConditionalTransaction is LibCondition {
 
   using Transfer for Transfer.Transaction;
 

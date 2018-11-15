@@ -2,7 +2,7 @@ pragma solidity 0.4.25;
 pragma experimental "ABIEncoderV2";
 
 import "openzeppelin-eth/contracts/utils/Address.sol";
-import "../lib/Transfer.sol";
+import "../libs/Transfer.sol";
 
 
 /// @title LibStaticCall - A library wrapper around the STATICALL opcode

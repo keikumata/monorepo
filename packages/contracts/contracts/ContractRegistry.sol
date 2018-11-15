@@ -62,7 +62,7 @@ contract ContractRegistry {
   /// @param ptr A counterfactual address
   /// @param data The data being sent in the call to the counterfactual contract
   function proxyCall(address registry, bytes32 ptr, bytes data) public {
-    address to = Registry(registry).resolver(ptr);
+    address to = ContractRegistry(registry).resolver(ptr);
     require(to != address(0), "Resolved to a 0x0 address");
     require(to.isContract(), "Tried to call function on a non-contract");
     require(to.call(data), "Registry.proxyCall failed.");

@@ -1,15 +1,15 @@
 pragma solidity 0.4.25;
 pragma experimental "ABIEncoderV2";
 
-import "./lib/LibStaticCall.sol";
+import "./LibStaticCall.sol";
 
 
-/// @title Conditional - A wrapper to verify if abstract conditions are true
+/// @title LibCondition - A wrapper to verify if abstract conditions are true
 /// @author Liam Horne - <liam@l4v.io>
 /// @notice This contracts purpose is to make it easy for to define and verify the
 /// resolution of an abstract blockchain condition. A condition may be represented as
 /// a successful function call or as an equality check on a function calls return value.
-contract Conditional {
+contract LibCondition is LibStaticCall {
 
   struct Condition {
     address to;
@@ -42,14 +42,13 @@ contract Conditional {
     view
     returns (bool)
   {
-    staticcall_as_bytes(
+    return staticcall_no_error(
       condition.to,
       abi.encodePacked(
         condition.selector,
         condition.parameters
       )
     );
-    return true; // TODO: Need better way of cheaply checking
   }
 
   /// @notice Verifies the expected return value of a Condition

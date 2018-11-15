@@ -1,6 +1,6 @@
 pragma solidity 0.4.25;
 
-import "../lib/LibStaticCall.sol";
+import "../libs/LibStaticCall.sol";
 
 
 contract TestCaller is LibStaticCall {

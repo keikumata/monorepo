@@ -1,104 +1,52 @@
 const tdr = require("truffle-deploy-registry");
 
-const Conditional = artifacts.require("Conditional");
-const ConditionalTransaction = artifacts.require("ConditionalTransaction");
-const MultiSend = artifacts.require("MultiSend");
-const NonceRegistry = artifacts.require("NonceRegistry");
-const PaymentApp = artifacts.require("PaymentApp");
-const ProxyFactory = artifacts.require("ProxyFactory");
-const Registry = artifacts.require("Registry");
-const Signatures = artifacts.require("Signatures");
-const StaticCall = artifacts.require("StaticCall");
+// Library
 const Transfer = artifacts.require("Transfer");
-const VirtualAppAgreement = artifacts.require("VirtualAppAgreement");
+
+// Delegate Targets
+const ConditionalTransaction = artifacts.require("ConditionalTransaction");
+const StateChannelTransaction = artifacts.require("StateChannelTransaction");
+
+// Core Registries
+const ContractRegistry = artifacts.require("ContractRegistry");
+const NonceRegistry = artifacts.require("NonceRegistry");
 const AppRegistry = artifacts.require("AppRegistry");
+
+// Generic
+const MultiSend = artifacts.require("MultiSend");
+
+// Example Apps
 const ETHBalanceRefundApp = artifacts.require("ETHBalanceRefundApp");
+const PaymentApp = artifacts.require("PaymentApp");
 
 module.exports = (deployer, network) => {
-  deployer.deploy(Transfer).then(instance => {
-    deployer.link(Transfer, [
-      VirtualAppAgreement,
-      ConditionalTransaction,
-      AppRegistry
-    ]);
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  const addToNetworkFile = obj =>
+    tdr.isDryRunNetworkName(network) || tdr.appendInstance(obj);
 
-  deployer.deploy(StaticCall).then(instance => {
-    deployer.link(StaticCall, [
-      ConditionalTransaction,
-      Conditional,
-      AppRegistry
-    ]);
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer
+    .deploy(Transfer)
+    .then(addToNetworkFile)
+    .then(() => {
+      deployer.link(Transfer, [
+        StateChannelTransaction,
+        ConditionalTransaction,
+        AppRegistry
+      ]);
+    });
 
-  deployer.deploy(Signatures).then(instance => {
-    deployer.link(Signatures, [AppRegistry]);
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(StateChannelTransaction).then(addToNetworkFile);
 
-  deployer.deploy(ConditionalTransaction).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(ConditionalTransaction).then(addToNetworkFile);
 
-  deployer.deploy(VirtualAppAgreement).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(MultiSend).then(addToNetworkFile);
 
-  deployer.deploy(MultiSend).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(NonceRegistry).then(addToNetworkFile);
 
-  deployer.deploy(NonceRegistry).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(PaymentApp).then(addToNetworkFile);
 
-  deployer.deploy(PaymentApp).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(ETHBalanceRefundApp).then(addToNetworkFile);
 
-  deployer.deploy(ETHBalanceRefundApp).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
+  deployer.deploy(ContractRegistry).then(addToNetworkFile);
 
-  deployer.deploy(ProxyFactory).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
-
-  deployer.deploy(Registry).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
-
-  deployer.deploy(AppRegistry).then(instance => {
-    if (!tdr.isDryRunNetworkName(network)) {
-      return tdr.appendInstance(instance);
-    }
-  });
-
-  // FIXME: This doesn't need to be deployed, but eth-gas-reporter breaks
-  // if it isn't deployed.
-  deployer.deploy(Conditional);
+  deployer.deploy(AppRegistry).then(addToNetworkFile);
 };
