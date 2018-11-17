@@ -30,7 +30,7 @@
     "off chain"
   ],
   "devDependencies": {
-    "ganache-cli": "^6.1.8",
+    "ganache-cli": "^6.2.1",
     "lerna": "^3.4.3",
     "prettier": "1.15.2",
     "tslint": "^5.11.0",
