@@ -1,9 +1,11 @@
+import firebasemock from "firebase-mock";
+
 import { Node } from "../../src/node";
 
 describe("Apps", () => {
   let node: Node;
   beforeEach(() => {
-    node = new Node();
+    node = new Node(new firebasemock.MockFirestore());
   });
 
   it("can open a connection with an app", () => {

@@ -1,3 +1,5 @@
+import firebasemock from "firebase-mock";
+
 import { Node } from "../../src/node";
 
 describe("Basic Node operations", () => {
@@ -6,7 +8,7 @@ describe("Basic Node operations", () => {
   });
 
   it("can be instantiated", () => {
-    const node = new Node();
+    const node = new Node(new firebasemock.MockFirestore());
     expect(node).toBeDefined();
   });
 });

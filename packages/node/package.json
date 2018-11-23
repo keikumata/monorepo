@@ -17,6 +17,7 @@
     "@types/node": "^10.9.3",
     "dotenv": "^6.1.0",
     "ethers": "^4.0.4",
+    "firebase-mock": "^2.2.10",
     "rollup": "^0.67.0",
     "rollup-plugin-node-builtins": "^2.1.2",
     "rollup-plugin-typescript2": "^0.18.0",
@@ -25,7 +26,9 @@
   },
   "dependencies": {
     "@counterfactual/cf.js": "0.0.1",
-    "@counterfactual/machine": "0.0.1"
+    "@counterfactual/machine": "0.0.1",
+    "@types/firebase": "^3.2.1",
+    "firebase": "^5.5.9"
   },
   "jest": {
     "bail": true,
