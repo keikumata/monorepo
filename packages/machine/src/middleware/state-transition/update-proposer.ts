@@ -1,15 +1,10 @@
 import * as cf from "@counterfactual/cf.js";
 
-import { Context } from "../../instruction-executor";
 import { Node } from "../../node";
 import { InternalMessage, StateProposal } from "../../types";
 
 export class UpdateProposer {
-  public static propose(
-    message: InternalMessage,
-    context: Context,
-    node: Node
-  ): StateProposal {
+  public static propose(message: InternalMessage, node: Node): StateProposal {
     const multisig: cf.legacy.utils.Address =
       message.clientMessage.multisigAddress;
     const channels = node.stateChannelInfosCopy();

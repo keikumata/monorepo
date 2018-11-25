@@ -204,15 +204,10 @@ export class TestCommitmentStore {
     internalMessage: InternalMessage,
     context: Context
   ): cf.legacy.node.ClientActionMessage | null {
-    if (internalMessage.actionName === cf.legacy.node.ActionName.INSTALL) {
-      return context.intermediateResults.inbox!;
-    }
-    const incomingMessageResult = context.intermediateResults.inbox!;
+    const incomingMessageResult = context.intermediateResults.inbox[0];
     if (incomingMessageResult === undefined) {
-      // receiver since non installs should have no io_WAIT
       return internalMessage.clientMessage;
     }
-    // sender so grab out the response
     return incomingMessageResult;
   }
 

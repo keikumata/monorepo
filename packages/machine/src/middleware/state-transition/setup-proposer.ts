@@ -39,6 +39,7 @@ export class SetupProposer {
       FREE_BALANCE_TIMEOUT,
       new cf.legacy.utils.Nonce(false, FREE_BALANCE_UNIQUE_ID, 0)
     );
+    console.log("me=", fromAddress);
     const stateChannel = new StateChannelInfoImpl(
       toAddress,
       fromAddress,

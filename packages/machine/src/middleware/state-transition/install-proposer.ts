@@ -13,6 +13,7 @@ export class InstallProposer {
   ): StateProposal {
     const multisig: cf.legacy.utils.Address =
       message.clientMessage.multisigAddress;
+
     const data: cf.legacy.app.InstallData = message.clientMessage.data;
     const app = new cf.legacy.app.AppInterface(
       data.app.address,
@@ -75,10 +76,11 @@ export class InstallProposer {
     context: Context,
     data: cf.legacy.app.InstallData
   ): string[] {
-    const lastResult = context.intermediateResults.inbox!;
+    const lastResult = context.intermediateResults.inbox[0];
 
     let signingKeys;
     if (lastResult && lastResult.data) {
+      // todo(ldct): this never happens does it
       signingKeys = [lastResult.data.keyA, lastResult.data.keyB];
     } else {
       signingKeys = [data.keyA!, data.keyB!];

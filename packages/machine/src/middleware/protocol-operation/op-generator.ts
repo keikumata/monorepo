@@ -11,9 +11,6 @@ import { OpSetup } from "./op-setup";
 import { OpUninstall } from "./op-uninstall";
 import { ProtocolOperation } from "./types";
 
-/**
- * Registered with OP_GENERATE
- */
 export class EthOpGenerator {
   public static generate(
     message: InternalMessage,
@@ -25,8 +22,6 @@ export class EthOpGenerator {
     let op;
     if (message.actionName === cf.legacy.node.ActionName.UPDATE) {
       op = this.update(message, context, node, proposedState.state);
-    } else if (message.actionName === cf.legacy.node.ActionName.SETUP) {
-      op = this.setup(message, context, node, proposedState.state);
     } else if (message.actionName === cf.legacy.node.ActionName.INSTALL) {
       op = this.install(
         message,
@@ -102,7 +97,6 @@ export class EthOpGenerator {
 
   public static setup(
     message: InternalMessage,
-    context: Context,
     node: Node,
     proposedSetup: any
   ): ProtocolOperation {
@@ -149,7 +143,7 @@ export class EthOpGenerator {
     message: InternalMessage,
     context: Context,
     node: Node,
-    proposedInstall: any,
+    proposedInstall: cf.legacy.channel.StateChannelInfos,
     cfAddr: cf.legacy.utils.H256
   ) {
     const channel = proposedInstall[message.clientMessage.multisigAddress];
@@ -158,7 +152,7 @@ export class EthOpGenerator {
       message.clientMessage.multisigAddress;
     const appChannel = channel.appInstances[cfAddr];
 
-    const signingKeys = [appChannel.keyA, appChannel.keyB];
+    const signingKeys = [appChannel.keyA!, appChannel.keyB!];
 
     const app = new cf.legacy.app.AppInstance(
       node.networkContext,
@@ -177,7 +171,7 @@ export class EthOpGenerator {
       freeBalance.uniqueId,
       freeBalance.localNonce,
       freeBalance.timeout,
-      freeBalance.nonce
+      freeBalance.dependencyNonce
     );
 
     const op = new OpInstall(
@@ -214,7 +208,7 @@ export class EthOpGenerator {
       freeBalance.uniqueId,
       freeBalance.localNonce,
       freeBalance.timeout,
-      freeBalance.nonce
+      freeBalance.dependencyNonce
     );
 
     const op = new OpUninstall(

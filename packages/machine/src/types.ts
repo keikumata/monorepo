@@ -28,8 +28,7 @@ export class InternalMessage {
   constructor(
     public actionName: cf.legacy.node.ActionName,
     public opCode: Opcode,
-    public clientMessage: cf.legacy.node.ClientActionMessage,
-    public isAckSide: boolean
+    public clientMessage: cf.legacy.node.ClientActionMessage
   ) {}
 }
 
