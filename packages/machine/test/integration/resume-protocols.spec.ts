@@ -2,7 +2,7 @@ import * as cf from "@counterfactual/cf.js";
 import { ethers } from "ethers";
 
 import { Context } from "../../src/instruction-executor";
-import { Opcode, instructions } from "../../src/instructions";
+import { instructions, Opcode } from "../../src/instructions";
 import { EthOpGenerator } from "../../src/middleware/protocol-operation/op-generator";
 import { StateTransition } from "../../src/middleware/state-transition/state-transition";
 import { InternalMessage } from "../../src/types";
@@ -61,7 +61,7 @@ abstract class SetupProtocolTestCase {
     );
     this.setupWallet(this.peerA, true);
     const resp = await this.peerA.runProtocol(this.msg());
-    expect(resp.status).toEqual(cf.node.ResponseStatus.ERROR);
+    expect(resp.status).toEqual(cf.legacy.node.ResponseStatus.ERROR);
     await this.resumeNewMachine();
     this.validate();
   }
@@ -91,11 +91,11 @@ abstract class SetupProtocolTestCase {
   public abstract description(): string;
   public abstract validate();
 
-  private msg(): cf.node.ClientActionMessage {
+  private msg(): cf.legacy.node.ClientActionMessage {
     return {
       requestId: "0",
       appId: undefined,
-      action: cf.node.ActionName.SETUP,
+      action: cf.legacy.node.ActionName.SETUP,
       data: {},
       multisigAddress: UNUSED_FUNDED_ACCOUNT,
       toAddress: A_ADDRESS,
@@ -131,12 +131,13 @@ class ResumeFirstInstructionTest extends SetupProtocolTestCase {
         if (shouldError) {
           throw new Error("Crashing the machine on purpose");
         }
-        return StateTransition.propose(
+        const proposal = StateTransition.propose(
           message,
           next,
           context,
-          peer.instructionExecutor.nodeState
+          peer.instructionExecutor.node
         );
+        context.intermediateResults.proposedStateTransition = proposal;
       }
     );
   }
@@ -148,7 +149,7 @@ class ResumeFirstInstructionTest extends SetupProtocolTestCase {
    */
   public validate() {
     const setupInstructions = JSON.parse(
-      JSON.stringify(instructions[cf.node.ActionName.SETUP])
+      JSON.stringify(instructions[cf.legacy.node.ActionName.SETUP])
     );
     setupInstructions.unshift(Opcode.STATE_TRANSITION_PROPOSE);
     expect(JSON.stringify(setupInstructions)).toEqual(
@@ -173,22 +174,20 @@ class ResumeSecondInstructionTest extends SetupProtocolTestCase {
 
     // override the existing STATE_TRANSITION_PROPOSE middleware so we can
     // error out if needed
-    peer.instructionExecutor.middleware.middlewares[
-      Opcode.OP_GENERATE
-    ] = [];
+    peer.instructionExecutor.middleware.middlewares[Opcode.OP_GENERATE] = [];
     peer.instructionExecutor.middleware.add(
       Opcode.OP_GENERATE,
       async (message: InternalMessage, next: Function, context: Context) => {
         if (shouldError) {
           throw new Error("Crashing the machine on purpose");
         }
-        const opGenerator = new EthOpGenerator();
-        return opGenerator.generate(
+        const operation = EthOpGenerator.generate(
           message,
           next,
           context,
-          peer.instructionExecutor.nodeState
+          peer.instructionExecutor.node
         );
+        context.intermediateResults.operation = operation;
       }
     );
   }
@@ -200,7 +199,7 @@ class ResumeSecondInstructionTest extends SetupProtocolTestCase {
    */
   public validate() {
     const setupInstructions = JSON.parse(
-      JSON.stringify(instructions[cf.node.ActionName.SETUP])
+      JSON.stringify(instructions[cf.legacy.node.ActionName.SETUP])
     );
     setupInstructions.splice(1, 0, Opcode.OP_GENERATE);
     expect(JSON.stringify(setupInstructions)).toEqual(
@@ -234,12 +233,8 @@ class ResumeLastInstructionTest extends SetupProtocolTestCase {
         if (shouldError) {
           throw new Error("Crashing the machine on purpose");
         }
-        return StateTransition.commit(
-          message,
-          next,
-          context,
-          peer.instructionExecutor.nodeState
-        );
+        const newState = context.intermediateResults.proposedStateTransition!;
+        context.instructionExecutor.mutateState(newState.state);
       }
     );
   }
@@ -251,7 +246,7 @@ class ResumeLastInstructionTest extends SetupProtocolTestCase {
    */
   public validate() {
     const setupInstructions = JSON.parse(
-      JSON.stringify(instructions[cf.node.ActionName.SETUP])
+      JSON.stringify(instructions[cf.legacy.node.ActionName.SETUP])
     );
     setupInstructions.push(Opcode.STATE_TRANSITION_COMMIT);
     expect(JSON.stringify(setupInstructions)).toEqual(

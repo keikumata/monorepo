@@ -11,8 +11,8 @@ export abstract class MultisigTxOp extends ProtocolOperation {
   abstract multisigInput(): MultisigInput;
 
   constructor(
-    readonly multisig: cf.utils.Address,
-    readonly freeBalance: cf.utils.FreeBalance
+    readonly multisig: cf.legacy.utils.Address,
+    readonly freeBalance: cf.legacy.utils.FreeBalance
   ) {
     super();
   }

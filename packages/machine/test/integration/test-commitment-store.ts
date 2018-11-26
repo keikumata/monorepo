@@ -2,8 +2,6 @@ import * as cf from "@counterfactual/cf.js";
 import { ethers } from "ethers";
 
 import { Context } from "../../src/instruction-executor";
-import { Opcode } from "../../src/instructions";
-import { getFirstResult, getLastResult } from "../../src/middleware/middleware";
 import {
   ProtocolOperation,
   Transaction
@@ -17,17 +15,17 @@ import {
 
 interface Commitments {
   appId: string;
-  commitments: Map<cf.node.ActionName, Transaction>;
+  commitments: Map<cf.legacy.node.ActionName, Transaction>;
 
   addCommitment(
-    action: cf.node.ActionName,
+    action: cf.legacy.node.ActionName,
     protocolOperation: ProtocolOperation,
     signatures: ethers.utils.Signature[]
   );
 
-  hasCommitment(action: cf.node.ActionName);
+  hasCommitment(action: cf.legacy.node.ActionName);
 
-  getTransaction(action: cf.node.ActionName);
+  getTransaction(action: cf.legacy.node.ActionName);
 }
 
 /**
@@ -40,11 +38,11 @@ export class AppCommitments implements Commitments {
     appId: string,
     serializedCommitments: string
   ): AppCommitments {
-    const commitments = new Map<cf.node.ActionName, Transaction>();
+    const commitments = new Map<cf.legacy.node.ActionName, Transaction>();
     const commitmentObjects = new Map(JSON.parse(serializedCommitments));
     commitmentObjects.forEach((commitment: any, action) => {
       commitments.set(
-        action as cf.node.ActionName,
+        action as cf.legacy.node.ActionName,
         new Transaction(commitment.to, commitment.value, commitment.data)
       );
     });
@@ -52,11 +50,11 @@ export class AppCommitments implements Commitments {
   }
 
   public readonly appId: string;
-  public readonly commitments: Map<cf.node.ActionName, Transaction>;
+  public readonly commitments: Map<cf.legacy.node.ActionName, Transaction>;
 
   constructor(
     appId: string,
-    commitments: Map<cf.node.ActionName, Transaction> = new Map()
+    commitments: Map<cf.legacy.node.ActionName, Transaction> = new Map()
   ) {
     this.appId = appId;
     this.commitments = commitments;
@@ -69,12 +67,15 @@ export class AppCommitments implements Commitments {
    * @param signatures
    */
   public async addCommitment(
-    action: cf.node.ActionName,
+    action: cf.legacy.node.ActionName,
     protocolOperation: ProtocolOperation,
     signatures: ethers.utils.Signature[]
   ) {
     const commitment = protocolOperation.transaction(signatures);
-    if (action !== cf.node.ActionName.UPDATE && this.commitments.has(action)) {
+    if (
+      action !== cf.legacy.node.ActionName.UPDATE &&
+      this.commitments.has(action)
+    ) {
       return;
       // FIXME: we should never non-maliciously get to this state
       // https://github.com/counterfactual/monorepo/issues/101
@@ -87,7 +88,9 @@ export class AppCommitments implements Commitments {
    * Determines whether a given action's commitment has been set
    * @param action
    */
-  public async hasCommitment(action: cf.node.ActionName): Promise<boolean> {
+  public async hasCommitment(
+    action: cf.legacy.node.ActionName
+  ): Promise<boolean> {
     return this.commitments.has(action);
   }
 
@@ -96,7 +99,7 @@ export class AppCommitments implements Commitments {
    * @param action
    */
   public async getTransaction(
-    action: cf.node.ActionName
+    action: cf.legacy.node.ActionName
   ): Promise<Transaction> {
     if (this.commitments.has(action)) {
       return this.commitments.get(action)!;
@@ -109,7 +112,7 @@ export class AppCommitments implements Commitments {
     // considering that the keys are all strings anyway.
     // https://stackoverflow.com/a/29085474/2680092
     // https://github.com/counterfactual/monorepo/issues/100
-    const pairs: [cf.node.ActionName, Transaction][] = [];
+    const pairs: [cf.legacy.node.ActionName, Transaction][] = [];
     this.commitments.forEach((v, k) => {
       pairs.push([k, v]);
     });
@@ -147,22 +150,16 @@ export class TestCommitmentStore {
     context: Context
   ) {
     let appId;
-    const action: cf.node.ActionName = internalMessage.actionName;
-    const op: ProtocolOperation = getFirstResult(
-      Opcode.OP_GENERATE,
-      context.results
-    ).value;
+    const action: cf.legacy.node.ActionName = internalMessage.actionName;
+    const operation = context.intermediateResults.operation!;
     let appCommitments: AppCommitments;
 
     const incomingMessage = this.incomingMessage(internalMessage, context);
 
-    if (action === cf.node.ActionName.SETUP) {
+    if (action === cf.legacy.node.ActionName.SETUP) {
       appId = internalMessage.clientMessage.multisigAddress;
-    } else if (action === cf.node.ActionName.INSTALL) {
-      const proposal = getFirstResult(
-        Opcode.STATE_TRANSITION_PROPOSE,
-        context.results
-      ).value;
+    } else if (action === cf.legacy.node.ActionName.INSTALL) {
+      const proposal = context.intermediateResults.proposedStateTransition!;
       appId = proposal.cfAddr;
     } else {
       appId = internalMessage.clientMessage.appId;
@@ -176,10 +173,7 @@ export class TestCommitmentStore {
       this.store.put(appId, Object(appCommitments.serialize()));
     }
 
-    const signature: ethers.utils.Signature = getFirstResult(
-      Opcode.OP_SIGN,
-      context.results
-    ).value;
+    const signature = context.intermediateResults.signature!;
 
     const counterpartySignature = incomingMessage!.signature!;
     if (
@@ -195,7 +189,7 @@ export class TestCommitmentStore {
       );
     }
 
-    await appCommitments.addCommitment(action, op, [
+    await appCommitments.addCommitment(action, operation, [
       signature,
       counterpartySignature
     ]);
@@ -209,20 +203,17 @@ export class TestCommitmentStore {
   public incomingMessage(
     internalMessage: InternalMessage,
     context: Context
-  ): cf.node.ClientActionMessage | null {
-    if (internalMessage.actionName === cf.node.ActionName.INSTALL) {
-      return getLastResult(Opcode.IO_WAIT, context.results).value;
+  ): cf.legacy.node.ClientActionMessage | null {
+    if (internalMessage.actionName === cf.legacy.node.ActionName.INSTALL) {
+      return context.intermediateResults.inbox!;
     }
-    const incomingMessageResult = getLastResult(
-      Opcode.IO_WAIT,
-      context.results
-    );
-    if (JSON.stringify(incomingMessageResult) === JSON.stringify({})) {
+    const incomingMessageResult = context.intermediateResults.inbox!;
+    if (incomingMessageResult === undefined) {
       // receiver since non installs should have no io_WAIT
       return internalMessage.clientMessage;
     }
     // sender so grab out the response
-    return incomingMessageResult.value;
+    return incomingMessageResult;
   }
 
   /**
@@ -235,7 +226,7 @@ export class TestCommitmentStore {
    */
   public async getTransaction(
     appId: string,
-    action: cf.node.ActionName
+    action: cf.legacy.node.ActionName
   ): Promise<Transaction> {
     if (!this.store.has(appId)) {
       throw Error("Invalid app id");
@@ -258,7 +249,7 @@ export class TestCommitmentStore {
 
   public async appHasCommitment(
     appId: string,
-    action: cf.node.ActionName
+    action: cf.legacy.node.ActionName
   ): Promise<boolean> {
     const appCommitments = AppCommitments.deserialize(
       appId,

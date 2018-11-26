@@ -1,7 +1,5 @@
 import { Context } from "../../instruction-executor";
-import { Opcode } from "../../instructions";
-import { getFirstResult } from "../../middleware/middleware";
-import { NodeState } from "../../node-state";
+import { Node } from "../../node";
 import { InternalMessage, StateProposal } from "../../types";
 
 import { PROPOSER_ACTIONS } from "./proposer-actions";
@@ -16,7 +14,7 @@ export class StateTransition {
     message: InternalMessage,
     next: Function,
     context: Context,
-    nodeState: NodeState
+    node: Node
   ): StateProposal {
     const proposer = PROPOSER_ACTIONS[message.actionName];
 
@@ -24,20 +22,6 @@ export class StateTransition {
       throw Error("Action name not supported");
     }
 
-    return proposer.propose(message, context, nodeState);
-  }
-
-  public static commit(
-    message: InternalMessage,
-    next: Function,
-    context: Context,
-    state: NodeState
-  ) {
-    const newState = getFirstResult(
-      Opcode.STATE_TRANSITION_PROPOSE,
-      context.results
-    );
-    context.instructionExecutor.mutateState(newState.value.state);
-    next();
+    return proposer.propose(message, context, node);
   }
 }

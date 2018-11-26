@@ -9,13 +9,13 @@ const { abi } = cf.utils;
 
 export class OpSetState extends ProtocolOperation {
   constructor(
-    readonly ctx: cf.network.NetworkContext,
-    readonly multisig: cf.utils.Address,
-    readonly signingKeys: cf.utils.Address[],
+    readonly ctx: cf.legacy.network.NetworkContext,
+    readonly multisig: cf.legacy.utils.Address,
+    readonly signingKeys: cf.legacy.utils.Address[],
     readonly appStateHash: string,
     readonly appUniqueId: number,
-    readonly terms: cf.app.Terms,
-    readonly app: cf.app.AppInterface,
+    readonly terms: cf.legacy.app.Terms,
+    readonly app: cf.legacy.app.AppInterface,
     readonly appLocalNonce: number,
     readonly timeout: number
   ) {
@@ -42,7 +42,7 @@ export class OpSetState extends ProtocolOperation {
    *          `setState` on AppInstance.sol.
    */
   public transaction(sigs: ethers.utils.Signature[]): Transaction {
-    const appCfAddr = new cf.app.AppInstance(
+    const appCfAddr = new cf.legacy.app.AppInstance(
       this.ctx,
       this.multisig,
       this.signingKeys,
